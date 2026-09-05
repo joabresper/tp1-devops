@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  api:
+    build: 
+      context: ./api
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    # Sobrescritura del CMD para el entorno local (desarrollo)
+    command: npm run dev
+    volumes:
+      - ./api:/usr/src/app
+      - /usr/src/app/node_modules
+    deploy:
+      replicas: 3
+
+  app-web:
+    build: 
+      context: ./app-web
+      target: development
+    # Sobrescritura del CMD para usar Vite en desarrollo
+    command: npm run dev -- --host
+    volumes:
+      - ./app-web:/usr/src/app
+      - /usr/src/app/node_modules
+
+  proxy:
+    image: nginx:alpine
+    container_name: proxy-reverso
+    ports:
+      - "80:80" # El usuario solo entrará a localhost:80
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - app-web
