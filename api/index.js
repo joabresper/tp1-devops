@@ -1,19 +1,7 @@
-const express = require('express');
+const app = require('./app');
 const redisClient = require('./db/redis');
 
-const app = express();
 const port = process.env.PORT || 3000;
-
-app.use(express.json());
-
-// Endpoint general de estado (Health Check)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
-});
-
-// Otros enrutadores
-// Ej: rutas de tareas
-// app.use('/api/tareas', require('./routes/tareas'));
 
 async function iniciar() {
   await redisClient.connect();
@@ -24,4 +12,8 @@ async function iniciar() {
   });
 }
 
-iniciar();
+iniciar().catch((error) => {
+  console.error('No se pudo iniciar la API:', error.message);
+  if (redisClient.isOpen) redisClient.destroy();
+  process.exitCode = 1;
+});

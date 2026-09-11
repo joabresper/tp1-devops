@@ -1,6 +1,7 @@
 const { createClient } = require('redis');
 
 const redisClient = createClient({
+  disableOfflineQueue: true,
   url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`
 });
 

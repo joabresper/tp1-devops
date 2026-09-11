@@ -28,7 +28,7 @@ Nginx reverse proxy :80
 
 - Docker Desktop iniciado.
 - Docker Compose incluido en Docker Desktop.
-- Puertos `80` y `6379` disponibles en la máquina host.
+- Puerto `80` disponible en la máquina host. Redis queda en la red interna.
 
 ## Iniciar el entorno
 
@@ -60,7 +60,7 @@ docker compose up --build --force-recreate -V --scale api=3
 | --- | --- |
 | Aplicación web a través del proxy | <http://localhost> |
 | Frontend directo para desarrollo | <http://localhost:5173> |
-| Redis desde el host | `localhost:6379` |
+| Redis dentro de Docker | `redis:6379` (acceso mediante la API o `redis-cli`) |
 | Health de la API, cuando esté disponible | <http://localhost/api/health> |
 
 El frontend debe hacer las llamadas a la API usando rutas relativas, por
@@ -165,14 +165,37 @@ volúmenes con `-V`.
 └── docker-compose.yaml  # Orquestación de los servicios
 ```
 
-## Estado del proyecto
+## Aplicación de tareas
 
-La infraestructura base está preparada para:
+La web permite agregar, listar, editar el título, completar/reabrir y eliminar
+tareas. Muestra estados de carga y errores y permite actualizar la lista.
+Todas las llamadas usan `/api/tareas` a través del proxy.
 
-- levantar un frontend detrás de Nginx;
-- ejecutar tres instancias de la API;
-- conectar todas las instancias al mismo Redis;
-- comprobar el comportamiento cuando una instancia de la API se detiene.
+| Método | Ruta | Operación |
+| --- | --- | --- |
+| GET | `/api/tareas` | Listar tareas por título |
+| GET | `/api/tareas/:id` | Consultar una tarea |
+| POST | `/api/tareas` | Crear una tarea (201) |
+| PUT | `/api/tareas/:id` | Reemplazar título y estado |
+| DELETE | `/api/tareas/:id` | Eliminar una tarea (204) |
 
-Los endpoints de negocio y las operaciones concretas sobre Redis se irán
-agregando en la API.
+POST y PUT reciben JSON: `{"title":"Estudiar DevOps","completed":false}`.
+El título se recorta y debe tener entre 1 y 200 caracteres. `completed` es
+booleano y, si se omite, se toma como `false` (PUT reemplaza ambos campos).
+Cada tarea tiene un UUID generado por la API. Datos inválidos devuelven 400,
+tareas inexistentes 404, cuerpos mayores a 10 KB 413 y errores del servicio 503.
+
+Redis guarda un hash `tareas`: cada campo es el ID y su valor es el JSON de la
+tarea. La actualización comprueba existencia y escribe en una sola operación
+atómica de Redis, para que un PUT no recree una tarea borrada por otra réplica.
+Todas las réplicas comparten los mismos datos.
+
+Redis utiliza AOF y el volumen `redis-data` para conservar tareas al recrear
+contenedores. `docker compose down` conserva el volumen; `down -v` lo borra
+junto con las tareas. Esta demo usa una lista compartida, sin usuarios.
+
+Para inspeccionar los datos:
+
+```powershell
+docker compose exec redis redis-cli HGETALL tareas
+```
