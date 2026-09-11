@@ -61,7 +61,8 @@ docker compose up --build --force-recreate -V --scale api=3
 | Aplicación web a través del proxy | <http://localhost> |
 | Frontend directo para desarrollo | <http://localhost:5173> |
 | Redis dentro de Docker | `redis:6379` (acceso mediante la API o `redis-cli`) |
-| Health de la API, cuando esté disponible | <http://localhost/api/health> |
+| Estado de la API y Redis | <http://localhost/api/health> |
+| Instancia de la API que responde | <http://localhost/api/instance> |
 
 El frontend debe hacer las llamadas a la API usando rutas relativas, por
 ejemplo:
@@ -112,6 +113,18 @@ docker compose down -v
 ```
 
 ## Probar el balanceo y la tolerancia a fallos
+
+`GET /api/instance` devuelve `{"service":"api","instance":"<hostname>"}`.
+Dentro de Docker, el hostname identifica el contenedor que atendió el pedido.
+La respuesta no se guarda en caché. Para ver la rotación de las réplicas:
+
+```powershell
+1..12 | ForEach-Object { (Invoke-RestMethod http://localhost/api/instance).instance }
+```
+
+Se separa de `/api/health`: health hace un PING a Redis y devuelve 200 si está
+disponible o 503 si falla; instance sirve para demostrar el balanceo y sigue
+respondiendo aunque Redis esté caído.
 
 Comprobar que existen tres instancias:
 

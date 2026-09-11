@@ -1,5 +1,6 @@
 const express = require('express');
 const { randomUUID } = require('node:crypto');
+const { hostname } = require('node:os');
 const redisClient = require('./db/redis');
 
 const app = express();
@@ -11,8 +12,13 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK' });
+app.get('/api/health', async (req, res) => {
+  await redisClient.ping();
+  res.json({ status: 'OK', redis: 'OK' });
+});
+
+app.get('/api/instance', (req, res) => {
+  res.json({ service: 'api', instance: hostname() });
 });
 
 function validateTask(req, res, next) {
