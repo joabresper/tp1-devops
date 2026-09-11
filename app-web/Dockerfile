@@ -23,6 +23,7 @@ RUN npm run build
 FROM nginx:alpine AS production
 # Copiamos el resultado de la Etapa 3 a la carpeta pública de Nginx
 COPY --from=build /usr/src/app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 # Arrancamos el servidor web
 CMD ["nginx", "-g", "daemon off;"]

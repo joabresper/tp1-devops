@@ -10,7 +10,7 @@ Navegador
 		|
 		v
 Nginx reverse proxy :80
-		|-----------------------> app-web (Vite) :5173
+		|-----------------------> app-web (Nginx) :80 (3 instancias)
 		|
 		+-----------------------> api :3000 (3 instancias)
 																	|
@@ -21,8 +21,11 @@ Nginx reverse proxy :80
 - El usuario entra por `http://localhost`.
 - Nginx envía `/` al frontend y `/api/*` a la API.
 - La API es el único servicio que se conecta con Redis.
-- Redis no balancea tráfico HTTP. El balanceo entre las instancias de la API
-	lo realiza Nginx junto con el DNS interno de Docker.
+- Nginx balancea entre tres frontends y tres APIs. Docker resuelve los nombres
+  de servicios a sus IP; Nginx distribuye los pedidos entre esas IP.
+- El proxy resuelve las IP al iniciar o recargar su configuración. Al recrear
+  o escalar contenedores, recargar Nginx para que tome las nuevas IP. Detener
+  una réplica no requiere una recarga para que funcionen las restantes.
 
 ## Requisitos
 
@@ -35,23 +38,27 @@ Nginx reverse proxy :80
 Desde la raíz del proyecto:
 
 ```powershell
-docker compose up --build --scale api=3
+docker compose up --build
 ```
 
 Para dejarlo corriendo en segundo plano:
 
 ```powershell
-docker compose up --build --scale api=3 -d
+docker compose up --build -d --wait
+docker compose exec proxy nginx -s reload
 ```
 
-`deploy.replicas: 3` está pensado principalmente para Docker Swarm. En Docker
-Compose local, `--scale api=3` es lo que crea las tres instancias.
+Docker Compose v2 respeta `deploy.replicas: 3` para ambos servicios. Se esperan
+ocho contenedores: tres frontends, tres APIs, Redis y el proxy. Los healthchecks
+permiten esperar a que Redis, la API y el frontend estén listos antes del proxy.
+También se puede indicar explícitamente `--scale api=3 --scale app-web=3`.
 
 Si se modificaron dependencias de Node y hay volúmenes antiguos de
 `node_modules`, recrear los volúmenes anónimos:
 
 ```powershell
-docker compose up --build --force-recreate -V --scale api=3
+docker compose up --build --force-recreate -V -d --wait
+docker compose exec proxy nginx -s reload
 ```
 
 ## URLs
@@ -59,7 +66,6 @@ docker compose up --build --force-recreate -V --scale api=3
 | Recurso | URL |
 | --- | --- |
 | Aplicación web a través del proxy | <http://localhost> |
-| Frontend directo para desarrollo | <http://localhost:5173> |
 | Redis dentro de Docker | `redis:6379` (acceso mediante la API o `redis-cli`) |
 | Estado de la API y Redis | <http://localhost/api/health> |
 | Instancia de la API que responde | <http://localhost/api/instance> |
@@ -122,51 +128,72 @@ La respuesta no se guarda en caché. Para ver la rotación de las réplicas:
 1..12 | ForEach-Object { (Invoke-RestMethod http://localhost/api/instance).instance }
 ```
 
+Para identificar el frontend, cada Nginx devuelve su hostname en el encabezado
+`X-Frontend-Instance` (consultar varias veces para ver los tres valores):
+
+```powershell
+1..12 | ForEach-Object { (Invoke-WebRequest -UseBasicParsing http://localhost/).Headers['X-Frontend-Instance'] }
+```
+
 Se separa de `/api/health`: health hace un PING a Redis y devuelve 200 si está
 disponible o 503 si falla; instance sirve para demostrar el balanceo y sigue
 respondiendo aunque Redis esté caído.
 
-Comprobar que existen tres instancias:
+Comprobar las tres instancias de cada servicio:
 
 ```powershell
 docker compose ps
 ```
 
-Obtener los nombres de los contenedores de API:
+Detener una instancia de cada servicio (PowerShell):
 
 ```powershell
-docker compose ps -q api
-```
-
-Detener una instancia concreta usando su nombre o ID:
-
-```powershell
-docker stop <contenedor-api>
+$apiId = docker compose ps -q api | Select-Object -First 1
+$frontId = docker compose ps -q app-web | Select-Object -First 1
+docker stop $apiId $frontId
 ```
 
 Repetir las peticiones al proxy mientras una instancia está detenida:
 
 ```powershell
-curl http://localhost/api/health
+Invoke-RestMethod http://localhost/api/health
+Invoke-WebRequest -UseBasicParsing http://localhost/ | Select-Object StatusCode
 ```
 
-La aplicación debe seguir respondiendo mientras permanezca disponible al
-menos una instancia saludable de la API. Para restaurar el entorno completo:
+Repetir también las consultas de instancia y usar la web para crear o editar
+una tarea. Nginx evita temporalmente los destinos que fallan y reintenta ante
+errores de conexión; no se habilitan reintentos de POST ya enviados, para evitar
+duplicar creaciones. Para restaurar el entorno completo:
 
 ```powershell
-docker compose up -d --scale api=3
+docker compose up -d --wait
+docker compose exec proxy nginx -s reload
 ```
+
+La tolerancia cubre la caída de réplicas de web/API; Redis y el proxy siguen
+siendo únicos. Si Redis cae, las operaciones de tareas y health fallan con 503,
+aunque `/api/instance` puede seguir respondiendo.
 
 ## Desarrollo local
 
-El servicio `app-web` utiliza el target `development` de su Dockerfile y
-ejecuta Vite con `--host`, para que Nginx pueda acceder a él dentro de la red
-de Docker. La API ejecuta `node --watch` mediante `npm run dev`.
+Compose usa el target `production` del frontend: Vite compila una vez y las
+tres réplicas sirven los mismos archivos estáticos con Nginx. No hay servidor
+Vite ni puerto 5173 publicados en este entorno. Después de cambiar la web:
 
-Los directorios del frontend y de la API se montan como volúmenes, por lo que
-los cambios de código se reflejan en los contenedores sin reconstruir la
-imagen. Si cambia `package.json` o `package-lock.json`, conviene recrear los
-volúmenes con `-V`.
+```powershell
+docker compose up --build -d --wait
+docker compose exec proxy nginx -s reload
+```
+
+El target `development` sigue disponible en el Dockerfile, pero no se utiliza
+para la demostración de réplicas. La API mantiene `npm run dev` y el montaje
+del código. Si Windows no propaga cambios a `node --watch`, ejecutar
+`docker compose restart api`. Si cambian dependencias de la API, recrear sus
+volúmenes anónimos con `-V` como se indica arriba.
+
+Si se modifica `proxy/nginx.conf` con el proxy ya levantado, validar y recargar
+la configuración con `docker compose exec proxy nginx -t` y
+`docker compose exec proxy nginx -s reload`.
 
 ## Pruebas
 
@@ -201,7 +228,7 @@ npm --prefix app-web run build
 .
 ├── api/                 # Backend Node.js y conexión con Redis
 ├── app-web/             # Frontend React/Vite
-├── proxy/nginx.conf     # Reverse proxy y balanceo hacia la API
+├── proxy/nginx.conf     # Reverse proxy y balanceo hacia web y API
 └── docker-compose.yaml  # Orquestación de los servicios
 ```
 
