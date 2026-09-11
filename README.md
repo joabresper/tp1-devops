@@ -168,6 +168,33 @@ los cambios de código se reflejan en los contenedores sin reconstruir la
 imagen. Si cambia `package.json` o `package-lock.json`, conviene recrear los
 volúmenes con `-V`.
 
+## Pruebas
+
+Con Node.js 22, sin levantar Docker ni Redis (comandos desde la raíz):
+
+```powershell
+npm --prefix api ci
+npm --prefix api test
+```
+
+En PowerShell con scripts deshabilitados, usar `npm.cmd` en lugar de `npm`.
+`api/test/app.test.js` usa el runner nativo `node:test` y `node:assert`.
+No se agregaron dependencias de pruebas. Levanta Express en un puerto libre
+y reemplaza los métodos de Redis por un doble en memoria para aislar la API.
+
+Las siete pruebas cubren CRUD, validación y límites, JSON inválido, tareas
+independientes, fallos de Redis, rutas inexistentes, health e identificación
+de instancia. El doble no ejecuta Lua ni comprueba Docker: la integración con
+Redis real, el balanceo y las caídas se verifican con el entorno levantado.
+
+Para verificar el frontend:
+
+```powershell
+npm --prefix app-web ci
+npm --prefix app-web run lint
+npm --prefix app-web run build
+```
+
 ## Estructura
 
 ```text
