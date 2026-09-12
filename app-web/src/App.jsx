@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Plus, Pencil, Trash2, Check, X, RefreshCw, Circle, CheckCircle } from 'lucide-react'
 import './App.css'
 
 async function request(path, options, onInstance) {
@@ -89,11 +90,10 @@ function App() {
   const completed = tasks.filter((task) => task.completed).length
 
   return (
-    <main>
+    <main className="app-container">
+      <div className="todo-card">
       <header>
-        <p className="eyebrow">TP1 · DevOps</p>
         <h1>Mis tareas</h1>
-        <p>Organizá tus pendientes, de a una tarea a la vez.</p>
       </header>
 
       <aside className="instances" aria-label="Instancias del sistema">
@@ -104,11 +104,13 @@ function App() {
 
       <form onSubmit={save}>
         <label htmlFor="task-title">{editingId ? 'Editar tarea' : 'Nueva tarea'}</label>
-        <div className="form-row">
+        <div className="input-group">
           <input id="task-title" value={title} onChange={(event) => setTitle(event.target.value)}
             placeholder="¿Qué tenés que hacer?" maxLength={200} required disabled={disabled} />
-          <button disabled={disabled || !title.trim()}>{editingId ? 'Guardar' : 'Agregar'}</button>
-          {editingId && <button type="button" className="secondary" onClick={cancelEditing} disabled={disabled}>Cancelar</button>}
+          <button className="btn-add" aria-label={editingId ? 'Guardar cambios' : 'Agregar tarea'} title={editingId ? 'Guardar cambios' : 'Agregar tarea'} disabled={disabled || !title.trim()}>
+            {editingId ? <Check aria-hidden="true" size={22} /> : <Plus aria-hidden="true" size={22} />}
+          </button>
+          {editingId && <button type="button" className="btn-icon" aria-label="Cancelar edición" title="Cancelar edición" onClick={cancelEditing} disabled={disabled}><X aria-hidden="true" size={20} /></button>}
         </div>
       </form>
 
@@ -116,33 +118,35 @@ function App() {
       <section aria-label="Lista de tareas" aria-busy={disabled}>
         <div className="list-heading">
           <p role="status">{loading ? 'Cargando tareas…' : `${completed} de ${tasks.length} completadas`}</p>
-          <button type="button" className="secondary" onClick={refresh} disabled={disabled}>Actualizar</button>
+          <button type="button" className="btn-refresh" onClick={refresh} disabled={disabled}><RefreshCw aria-hidden="true" size={16} /> Actualizar</button>
         </div>
-        {!loading && !error && tasks.length === 0 && <p className="empty">Todavía no hay tareas. Agregá la primera.</p>}
-        <ul>
+        {!loading && !error && tasks.length === 0 && <p className="loading">Todavía no hay tareas. Agregá la primera.</p>}
+        <ul className="todo-list">
           {[...tasks].sort((a, b) => a.title.localeCompare(b.title, 'es')).map((task) => (
-            <li key={task.id}>
-              <label className="task-label">
-                <input type="checkbox" checked={task.completed} disabled={disabled || editingId === task.id}
+            <li key={task.id} className={`todo-item${task.completed ? ' completed' : ''}`}>
+              <label className="todo-content">
+                <input className="task-checkbox" type="checkbox" checked={task.completed} disabled={disabled || editingId === task.id}
                   onChange={() => mutate(`/${task.id}`, 'PUT', { title: task.title, completed: !task.completed })} />
-                <span className={task.completed ? 'completed' : ''}>{task.title}</span>
+                {task.completed ? <CheckCircle className="check-icon" aria-hidden="true" size={22} /> : <Circle className="check-icon" aria-hidden="true" size={22} />}
+                <span className="todo-text">{task.title}</span>
               </label>
               <div className="actions">
-                <button type="button" className="secondary" disabled={disabled}
+                <button type="button" className="btn-icon btn-edit" title="Editar tarea" disabled={disabled}
                   aria-label={`Editar ${task.title}`} onClick={() => {
                     setEditingId(task.id)
                     setTitle(task.title)
                     document.getElementById('task-title').focus()
-                  }}>Editar</button>
-                <button type="button" className="danger" disabled={disabled}
+                  }}><Pencil aria-hidden="true" size={18} /></button>
+                <button type="button" className="btn-icon" title="Eliminar tarea" disabled={disabled}
                   aria-label={`Eliminar ${task.title}`} onClick={async () => {
                     if (await mutate(`/${task.id}`, 'DELETE') && editingId === task.id) cancelEditing()
-                  }}>Eliminar</button>
+                  }}><Trash2 aria-hidden="true" size={18} /></button>
               </div>
             </li>
           ))}
         </ul>
       </section>
+      </div>
     </main>
   )
 }

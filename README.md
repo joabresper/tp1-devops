@@ -1,5 +1,7 @@
 # TP1 DevOps
 
+[![CI/CD Pipeline](https://github.com/joabresper/tp1-devops/actions/workflows/ci-cd.yaml/badge.svg?branch=develop)](https://github.com/joabresper/tp1-devops/actions/workflows/ci-cd.yaml)
+
 Entorno de práctica para trabajar con contenedores, balanceo de carga y
 comunicación entre servicios.
 
@@ -217,6 +219,8 @@ En PowerShell con scripts deshabilitados, usar `npm.cmd` en lugar de `npm`.
 `api/test/app.test.js` usa el runner nativo `node:test` y `node:assert`.
 No se agregaron dependencias de pruebas. Levanta Express en un puerto libre
 y reemplaza los métodos de Redis por un doble en memoria para aislar la API.
+Se conserva un único runner: `node:test`. CI ejecuta el mismo `npm test`;
+migrar a Jest no aporta cobertura adicional y agrega dependencias innecesarias.
 
 Las siete pruebas cubren CRUD, validación y límites, JSON inválido, tareas
 independientes, fallos de Redis, rutas inexistentes, health e identificación
@@ -230,6 +234,43 @@ npm --prefix app-web ci
 npm --prefix app-web run lint
 npm --prefix app-web run build
 ```
+
+## Automatización y producción
+
+El workflow `.github/workflows/ci-cd.yaml` conserva la automatización de
+`develop`, adaptada a la aplicación integrada:
+
+- En pushes a `main`, `develop` y `feature/**`, y PR hacia `main` o `develop`,
+  ejecuta las pruebas de API, lint y compilación del frontend con Node.js 22.
+- Trivy analiza vulnerabilidades de dependencias; bloquea la publicación si
+  encuentra vulnerabilidades HIGH o CRITICAL con corrección disponible.
+  Este análisis no sustituye un SAST del código fuente ni una calificación
+  de calidad de código.
+- Solo un push a `main`, con ambos jobs aprobados, construye y publica las
+  imágenes `tp1-devops-api:latest` y `tp1-devops-app-web:latest` en Docker Hub.
+  Requiere los secrets `DOCKER_USERNAME` y `DOCKER_PASSWORD` (token de Docker Hub).
+- El workflow publica imágenes; el despliegue en un servidor sigue siendo manual.
+  El badge enlaza el estado real del workflow en `develop`.
+
+En el servidor con Docker, copiar `docker-compose.prod.yaml` y
+`proxy/nginx.conf`, conservando esa estructura. Crear un archivo `.env` junto
+al Compose con `DOCKER_USERNAME=nombre_real_de_la_cuenta` (sin contraseña).
+Una vez publicadas las imágenes desde `main`:
+
+```sh
+docker compose -f docker-compose.prod.yaml pull
+docker compose -f docker-compose.prod.yaml up -d --wait
+docker compose -f docker-compose.prod.yaml exec proxy nginx -s reload
+```
+
+El Compose de producción usa las imágenes publicadas, tres frontends Nginx,
+tres APIs, healthchecks y Redis persistente. No monta código ni ejecuta Vite
+o el watcher de Node. Publica el puerto 80 del servidor. Para desarrollo local
+se utiliza el `docker-compose.yaml` habitual con `--build`.
+
+El CRUD integrado usa el hash `tareas` de la rama feature. Los datos que la
+antigua API de `develop` guardaba en `todos_list` no se migran automáticamente;
+esa clave no se elimina y la aplicación nueva no la consulta.
 
 ## Estructura
 
