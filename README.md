@@ -1,5 +1,9 @@
 # TP1 DevOps
 
+[![CI/CD Pipeline](https://github.com/tu_usuario/tp1-devops/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/tu_usuario/tp1-devops/actions)
+[![Security Scan](https://img.shields.io/badge/SAST-Trivy-blue.svg)](https://github.com/tu_usuario/tp1-devops/actions)
+
+
 Entorno de práctica para trabajar con contenedores, balanceo de carga y
 comunicación entre servicios.
 
@@ -176,3 +180,13 @@ La infraestructura base está preparada para:
 
 Los endpoints de negocio y las operaciones concretas sobre Redis se irán
 agregando en la API.
+
+## Despliegue en la Nube (Producción)
+
+Para desplegar la aplicación en un servidor en la nube (ej. VPS en AWS, DigitalOcean):
+
+1. Clona este repositorio o copia el archivo `docker-compose.prod.yaml` a tu servidor.
+2. Define la variable de entorno con tu usuario de Docker Hub: `export DOCKER_USERNAME=tu_usuario`
+3. Inicia el entorno con: `docker compose -f docker-compose.prod.yaml up -d`
+
+Las imágenes se descargarán automáticamente desde Docker Hub.

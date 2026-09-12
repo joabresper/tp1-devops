@@ -12,8 +12,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Otros enrutadores
-// Ej: rutas de tareas
-// app.use('/api/tareas', require('./routes/tareas'));
+app.use('/api/todos', require('./routes/todos'));
 
 async function iniciar() {
   await redisClient.connect();

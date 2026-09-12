@@ -1,0 +1,39 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+
+  api:
+    image: ${DOCKER_USERNAME:-tu_usuario}/tp1-devops-api:latest
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=production
+    depends_on:
+      - redis
+    command: npm run start
+    deploy:
+      replicas: 3
+    restart: always
+
+  app-web:
+    image: ${DOCKER_USERNAME:-tu_usuario}/tp1-devops-app-web:latest
+    # En producción el contenedor frontend debería servir los estáticos (ej con Nginx o Serve)
+    # o si se sigue usando Vite se requiere otro comando. Suponemos la imagen ya hace un `npm run preview` o similar,
+    # aunque lo ideal es compilar `npm run build` y usar nginx para estáticos.
+    # Dado que el TP pide levantar la arquitectura, si el Dockerfile de prod está preparado, esto funciona.
+    command: npm run start
+    restart: always
+
+  proxy:
+    image: nginx:alpine
+    container_name: proxy-reverso
+    ports:
+      - "80:80"
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - app-web
+    restart: always
