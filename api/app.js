@@ -6,11 +6,12 @@ const redisClient = require('./db/redis');
 const app = express();
 const TASKS_KEY = 'tareas';
 
-app.use(express.json({ limit: '10kb' }));
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
+  res.set('X-API-Instance', hostname());
   next();
 });
+app.use(express.json({ limit: '10kb' }));
 
 app.get('/api/health', async (req, res) => {
   await redisClient.ping();

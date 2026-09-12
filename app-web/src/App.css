@@ -23,6 +23,10 @@ li { display: flex; align-items: center; justify-content: space-between; gap: 16
 .task-label input { width: 20px; height: 20px; flex-shrink: 0; accent-color: #1d4ed8; }
 .completed { text-decoration: line-through; color: #64748b; }
 .actions { flex-shrink: 0; }
+.instances { display: flex; flex-wrap: wrap; gap: 16px 32px; padding: 16px; margin-bottom: 24px; background: #e2e8f0; border-radius: 8px; }
+.instances span { display: block; font-size: 0.8rem; color: #475569; margin-bottom: 4px; }
+.instances code { overflow-wrap: anywhere; }
+.instances p { flex-basis: 100%; margin: 0; font-size: 0.85rem; color: #475569; }
 
 @media (max-width: 600px) {
   main { margin: 32px auto; padding: 0 16px; }

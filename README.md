@@ -120,6 +120,15 @@ docker compose down -v
 
 ## Probar el balanceo y la tolerancia a fallos
 
+La web muestra el frontend que sirvió el HTML y la API que respondió la última
+petición de tareas. El frontend inyecta su hostname en el HTML; la API incluye
+`X-API-Instance` en cada respuesta, incluso errores y eliminaciones sin cuerpo.
+No se hace una consulta de diagnóstico adicional que pudiera tocar otra réplica.
+Usar **Actualizar** o modificar una tarea cambia el indicador de API; recargar
+la página permite ver el frontend que atiende la nueva carga. Los nombres pueden
+repetirse: otras peticiones también participan del balanceo. Fuera de Nginx, el
+frontend se identifica como `Sin Nginx`.
+
 `GET /api/instance` devuelve `{"service":"api","instance":"<hostname>"}`.
 Dentro de Docker, el hostname identifica el contenedor que atendió el pedido.
 La respuesta no se guarda en caché. Para ver la rotación de las réplicas:

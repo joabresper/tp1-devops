@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-async function request(path = '', options = {}) {
+async function request(path, options, onInstance) {
   const response = await fetch(`/api/tareas${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json' },
   })
+  if (!options.signal?.aborted) onInstance(response.headers.get('X-API-Instance'))
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.error || 'No se pudo completar la operación. Intentá nuevamente.')
@@ -20,10 +21,12 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [apiInstance, setApiInstance] = useState(null)
+  const frontendInstance = document.querySelector('meta[name="frontend-instance"]')?.content || 'No disponible'
 
   useEffect(() => {
     const controller = new AbortController()
-    request('', { signal: controller.signal })
+    request('', { signal: controller.signal }, setApiInstance)
       .then(setTasks)
       .catch((err) => {
         if (!controller.signal.aborted) setError(err.message)
@@ -37,8 +40,9 @@ function App() {
   async function refresh() {
     setLoading(true)
     setError('')
+    setApiInstance(null)
     try {
-      setTasks(await request())
+      setTasks(await request('', {}, setApiInstance))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,8 +53,9 @@ function App() {
   async function mutate(path, method, body) {
     setBusy(true)
     setError('')
+    setApiInstance(null)
     try {
-      const task = await request(path, { method, body: body && JSON.stringify(body) })
+      const task = await request(path, { method, body: body && JSON.stringify(body) }, setApiInstance)
       setTasks((current) => method === 'POST'
         ? [...current, task]
         : method === 'DELETE'
@@ -90,6 +95,12 @@ function App() {
         <h1>Mis tareas</h1>
         <p>Organizá tus pendientes, de a una tarea a la vez.</p>
       </header>
+
+      <aside className="instances" aria-label="Instancias del sistema">
+        <div><span>Frontend que sirvió la página</span><code>{frontendInstance}</code></div>
+        <div><span>API de la última petición</span><code aria-live="polite">{apiInstance || (disabled ? 'Consultando…' : 'Sin respuesta identificada')}</code></div>
+        <p>Usá Actualizar o modificá una tarea para ver qué API responde. Recargá la página para consultar otro frontend.</p>
+      </aside>
 
       <form onSubmit={save}>
         <label htmlFor="task-title">{editingId ? 'Editar tarea' : 'Nueva tarea'}</label>

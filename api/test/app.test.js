@@ -38,12 +38,14 @@ beforeEach((t) => {
   });
 });
 
-function request(path, method = 'GET', body) {
-  return fetch(`${baseUrl}${path}`, {
+async function request(path, method = 'GET', body) {
+  const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  assert.equal(response.headers.get('x-api-instance'), hostname());
+  return response;
 }
 
 test('CRUD: crea, lista, consulta, edita, completa y elimina una tarea', async () => {
@@ -88,6 +90,7 @@ test('rechaza JSON mal formado y cuerpos demasiado grandes', async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{',
   });
   assert.equal(malformed.status, 400);
+  assert.equal(malformed.headers.get('x-api-instance'), hostname());
   assert.match((await malformed.json()).error, /JSON/);
   assert.equal((await request('/tareas', 'POST', { title: 'a'.repeat(11000) })).status, 413);
   assert.equal(redisClient.hSet.mock.callCount(), 0);
