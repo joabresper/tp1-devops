@@ -1,5 +1,6 @@
 #root { width: 100%; }
-.app-container { margin: 24px auto; max-width: 600px; }
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; gap: 24px; padding: 24px; }
+.app-container { margin: auto; max-width: 600px; }
 p { line-height: 1.5; }
 form > label { display: block; margin-bottom: 10px; font-size: 0.9rem; }
 .input-group input { min-width: 0; }
@@ -18,12 +19,17 @@ button:focus-visible, .task-checkbox:focus-visible + svg { outline: 2px solid #9
 .task-checkbox:disabled { cursor: not-allowed; }
 .task-checkbox:disabled + svg { opacity: 0.45; }
 .error { color: #fecaca; background: rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 14px; margin-bottom: 16px; }
-.instances { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 16px; margin-bottom: 24px; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border); border-radius: 8px; }
-.instances span { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
-.instances code { overflow-wrap: anywhere; color: #c4b5fd; }
-.instances p { flex-basis: 100%; font-size: 0.75rem; color: #94a3b8; }
+.instances { align-self: flex-end; max-width: 100%; }
+.instances dl { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px 16px; }
+.instance-tag { min-width: 0; max-width: 100%; }
+.instance-tag dt { margin: 0 12px 6px; font-size: 0.85rem; font-weight: 700; color: #cbd5e1; }
+.instance-tag dd { padding: 10px 16px; border: 1px solid rgba(96, 165, 250, 0.35); border-radius: 999px; background: #1e3a5f; }
+.instance-tag code { display: block; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.03em; overflow-wrap: anywhere; color: #93c5fd; }
+.instance-api dd { border-color: rgba(167, 139, 250, 0.35); background: #3b2d59; }
+.instance-api code { color: #c4b5fd; }
 @media (max-width: 480px) {
-  .app-container { padding: 12px; margin: 12px auto; }
+  .app-shell { padding: 16px 12px; }
+  .app-container { padding: 0; }
   .todo-card { padding: 20px 16px; }
   .todo-item { padding: 10px; }
   .actions { gap: 0; }

@@ -90,17 +90,24 @@ function App() {
   const completed = tasks.filter((task) => task.completed).length
 
   return (
+    <div className="app-shell">
+      <aside className="instances" aria-label="Instancias del sistema">
+        <dl>
+          <div className="instance-tag instance-frontend" title="Frontend que sirvió la página. Recargá la página para consultar otro frontend.">
+            <dt>Frontend</dt>
+            <dd><code>{frontendInstance}</code></dd>
+          </div>
+          <div className="instance-tag instance-api" title="API de la última petición. Usá Actualizar o modificá una tarea para ver qué API responde.">
+            <dt>API · última petición</dt>
+            <dd><code aria-live="polite">{apiInstance || (disabled ? 'Consultando…' : 'Sin respuesta identificada')}</code></dd>
+          </div>
+        </dl>
+      </aside>
     <main className="app-container">
       <div className="todo-card">
       <header>
         <h1>Mis tareas</h1>
       </header>
-
-      <aside className="instances" aria-label="Instancias del sistema">
-        <div><span>Frontend que sirvió la página</span><code>{frontendInstance}</code></div>
-        <div><span>API de la última petición</span><code aria-live="polite">{apiInstance || (disabled ? 'Consultando…' : 'Sin respuesta identificada')}</code></div>
-        <p>Usá Actualizar o modificá una tarea para ver qué API responde. Recargá la página para consultar otro frontend.</p>
-      </aside>
 
       <form onSubmit={save}>
         <label htmlFor="task-title">{editingId ? 'Editar tarea' : 'Nueva tarea'}</label>
@@ -148,6 +155,7 @@ function App() {
       </section>
       </div>
     </main>
+    </div>
   )
 }
 
