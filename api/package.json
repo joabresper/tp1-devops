@@ -4,6 +4,7 @@
     "redis": "^6.2.1"
   },
   "scripts": {
+    "test": "node --test",
     "dev": "node --watch index.js",
     "start": "node index.js"
   }

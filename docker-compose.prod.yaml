@@ -10,46 +10,42 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: always
 
   api:
-    build: 
-      context: ./api
+    image: ${DOCKER_USERNAME:?Define DOCKER_USERNAME}/tp1-devops-api:latest
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - NODE_ENV=production
     depends_on:
       redis:
         condition: service_healthy
-    # Sobrescritura del CMD para el entorno local (desarrollo)
-    command: npm run dev
-    volumes:
-      - ./api:/usr/src/app
-      - /usr/src/app/node_modules
-    deploy:
-      replicas: 3
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 10
+    deploy:
+      replicas: 3
+    restart: always
 
   app-web:
-    build: 
-      context: ./app-web
-      target: production
+    image: ${DOCKER_USERNAME:?Define DOCKER_USERNAME}/tp1-devops-app-web:latest
     deploy:
       replicas: 3
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: always
 
   proxy:
     image: nginx:alpine
     container_name: proxy-reverso
     ports:
-      - "80:80" # El usuario solo entrará a localhost:80
+      - "80:80"
     volumes:
       - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -57,6 +53,7 @@ services:
         condition: service_healthy
       app-web:
         condition: service_healthy
+    restart: always
 
 volumes:
   redis-data:
